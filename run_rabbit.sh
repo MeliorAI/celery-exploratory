@@ -32,6 +32,6 @@ check_var() {
 
 
 docker run -d \
-    -p 8080:15672 -p5672:5672 \
+    -p 8080:15673 -p5673:5673 \
     --hostname my-rabbit \
     rabbitmq:management

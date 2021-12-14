@@ -28,4 +28,6 @@ pip install -r requirements.txt
     from src.tasks import add
 
     add.delay(2, 2).get(timeout=1)
+
     ```
+    You could also do : python -m src.main "path" to test how textract functions are executed remotely with celery .
