@@ -4,20 +4,35 @@ This repo demostrate how to build a very basic Celery distributed task system.
 
 <!--ts-->
    * [Celery Exploratory](#celery-exploratory)
-      * [Install](#install)
+      * [Requirements](#requirements)
       * [How To](#how-to)
+         * [Install](#install)
+         * [Run](#run)
 
-<!-- Added by: jose, at: Wed Dec 15 16:32:40 UTC 2021 -->
+<!-- Added by: jose, at: Wed Dec 15 16:43:55 UTC 2021 -->
 
 <!--te-->
 
-## Install
+## Requirements
 
-```bash
-pip install -r requirements.txt
-```
+ - python >= 3.6
+ - docker
+ - docker-compose
 
 ## How To
+
+### Install
+
+Installing should be as simple as:
+
+```bash
+make insall
+```
+
+Assuming `docker` and `docker-compose` are already installed in your system
+
+
+### Run
 
 1. Run `rabbitMQ` and `redis` as Celery backends
 
@@ -28,19 +43,21 @@ pip install -r requirements.txt
 2. Run the app (server):
 
     ```bash
-    celery -A src worker -l INFO
+    make run-workers
     ```
 
 3. Call the functions
 
     * To test an individuall function:
 
-    ```python
-    from src.tasks import add
+        ```python
+        from src.tasks import add
 
-    add.delay(2, 2).get(timeout=1)
-    ```
+        add.delay(2, 2).get(timeout=1)
+        ```
 
+    * Or to run text-extraction functions from the client:
 
-    Or to run the client: `make run-client f=<file-to-extract-text-from>`
-
+        ```bash
+        make run-client f=<file-to-extract-text-from>
+        ```
