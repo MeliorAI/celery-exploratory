@@ -1,0 +1,30 @@
+version: "3.8"
+
+x-logging:
+  &default-logging
+  options:
+    max-size: "200k"
+    max-file: "10"
+
+services:
+
+  # ======= Storage services =======
+  redis:
+    image: redis
+    logging: *default-logging
+    network_mode: host
+    ports:
+      - "6379:6379"
+    command:
+      - redis-server
+      - --protected-mode
+      - "no"
+
+  # ======= Queue services =======
+  rabbit:
+    image: rabbitmq:management
+    logging: *default-logging
+    network_mode: host
+    ports:
+      - 15672:15672
+      - 5672:5672

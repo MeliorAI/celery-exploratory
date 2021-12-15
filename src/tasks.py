@@ -1,10 +1,21 @@
-from .celery import app
+import logging
 import os
+import coloredlogs
+import tempfile
 from pathlib import Path
+from typing import Any
+from typing import Dict
 from typing import Text
 from typing import Tuple
+
 import textract
-import pickle
+
+from src.celery import app
+
+
+logger = logging.getLogger(__name__)
+coloredlogs.install(logger=logger, level=logging.DEBUG)
+
 
 @app.task
 def add(x, y):
@@ -20,19 +31,18 @@ def mul(x, y):
 def xsum(numbers):
     return sum(numbers)
 
-@app.task
-def textract_from_file(file_path: Text, file_name: Text) -> Tuple[Text, bool]:
 
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"")
-
+@app.task(serializer="pickle")
+def textract_from_file(
+    file_bytes: Text = None, file_path: Text = None, meta: Dict[Text, Any] = None
+) -> Tuple[Text, bool]:
     def _extract_from_pdf(file_path):
         # Try with textract, normal mode
         content = textract.process(file_path, extension="pdf").decode().strip()
         ocr = False
         if not content:
             # If no results, try with "tesseract" method if it's a scanned pdf
-            print.warning("No text could be extrated. Trying OCR...")
+            logger.warning("No text could be extrated. Trying OCR...")
             content = (
                 textract.process(file_path, extension="pdf", method="tesseract")
                 .decode()
@@ -45,20 +55,33 @@ def textract_from_file(file_path: Text, file_name: Text) -> Tuple[Text, bool]:
     def _extract_from_other(file_path):
         return textract.process(file_path, extension=file_extension).decode().strip()
 
-    file_extension = Path(file_name).suffix.lower()
+    def extract(file_path, file_extension):
+        if file_extension == ".pdf":
+            return _extract_from_pdf(file_path)
 
-    if file_extension == ".pdf":
-        return _extract_from_pdf(file_path)
+        return _extract_from_other(file_path), False
 
-    return _extract_from_other(file_path), False
+    if file_path:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Given file: '{file_path}' doesn't exists!")
 
-@app.task(serializer='pickle')
-def textract_from_raw_bytes(raw_bytes,write_file='testFiles/tmp.txt'):
-    raw_data = pickle.loads(raw_bytes)
+        _, fname = os.path.split(file_path)
+        file_extension = Path(fname).suffix.lower()
 
-    with open(write_file, "w") as file:
-        file.write(raw_data)
-    
-    result =  textract_from_file(write_file, write_file.split('/')[-1])
-    os.remove(write_file)
-    return result
+        return extract(file_path, file_extension)
+
+    if file_bytes:
+        filename = meta.get("filename")
+        if filename is None:
+            raise ValueError(
+                "file_bytes provided but no file valid metadata given. "
+                "Pass 'metadata.filename' so we can guess the extension"
+            )
+
+        file_extension = Path(filename).suffix.lower()
+
+        with tempfile.NamedTemporaryFile(suffix=file_extension, mode="wb") as f:
+            f.write(file_bytes)
+            logger.warning(f"FILE: {f.name}")
+
+            return extract(f.name, file_extension)
